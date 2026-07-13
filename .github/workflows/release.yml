@@ -14,39 +14,21 @@ jobs:
         include:
           - os: macos-latest
             target: macos-arm64
-            zig-url: https://ziglang.org/builds/zig-macos-aarch64-0.16.0-dev.3153+d6f43caad.tar.xz
-            zig-dir: zig-macos-aarch64-0.16.0-dev.3153+d6f43caad
           - os: macos-13
             target: macos-x64
-            zig-url: https://ziglang.org/builds/zig-macos-x86_64-0.16.0-dev.3153+d6f43caad.tar.xz
-            zig-dir: zig-macos-x86_64-0.16.0-dev.3153+d6f43caad
           - os: ubuntu-latest
             target: linux-x64
-            zig-url: https://ziglang.org/builds/zig-linux-x86_64-0.16.0-dev.3153+d6f43caad.tar.xz
-            zig-dir: zig-linux-x86_64-0.16.0-dev.3153+d6f43caad
           - os: windows-latest
             target: windows-x64
-            zig-url: https://ziglang.org/builds/zig-windows-x86_64-0.16.0-dev.3153+d6f43caad.zip
-            zig-dir: zig-windows-x86_64-0.16.0-dev.3153+d6f43caad
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Zig
-        shell: bash
-        run: |
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            curl -L "${{ matrix.zig-url }}" -o zig.zip
-            7z x zig.zip -ozig-tmp
-            mv zig-tmp/* zig
-            echo "$PWD/zig" >> $GITHUB_PATH
-          else
-            curl -L "${{ matrix.zig-url }}" -o zig.tar.xz
-            tar xf zig.tar.xz
-            mv "${{ matrix.zig-dir }}" zig
-            echo "$PWD/zig" >> $GITHUB_PATH
-          fi
+      - name: Setup Zig
+        uses: goto-bus-stop/setup-zig@v2
+        with:
+          version: master
 
       - name: Verify Zig
         run: zig version
@@ -93,15 +75,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/download-artifact@v4
         with:
           path: artifacts
           merge-multiple: true
-
       - name: List artifacts
         run: ls -la artifacts/
-
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v1
         with:
@@ -109,13 +88,11 @@ jobs:
           generate_release_notes: true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           registry-url: 'https://registry.npmjs.org'
-
       - name: Publish to npm
         run: |
           cd plugins/vite
