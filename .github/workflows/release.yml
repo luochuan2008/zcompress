@@ -33,7 +33,7 @@ jobs:
       - name: Setup Zig
         uses: mlugg/setup-zig@v1
         with:
-          version: 0.16.0-dev
+          version: master
 
       - name: Install deps (Linux)
         if: runner.os == 'Linux'
