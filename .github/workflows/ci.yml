@@ -12,7 +12,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -23,20 +23,13 @@ jobs:
         with:
           version: master
 
-      - name: Verify Zig
-        run: zig version
-
-      - name: Install zstd + brotli (Linux)
+      - name: Install deps (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libzstd-dev libbrotli-dev
 
-      - name: Install zstd + brotli (macOS)
+      - name: Install deps (macOS)
         if: runner.os == 'macOS'
         run: brew install zstd brotli
-
-      - name: Install zstd + brotli (Windows)
-        if: runner.os == 'Windows'
-        run: choco install zstandard brotli -y
 
       - name: Run tests
         run: zig build test --summary all

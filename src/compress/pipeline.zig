@@ -169,16 +169,31 @@ fn compressWorker(args: CompressArgs) void {
         // Run compression based on algorithm
         const result = switch (args.algo) {
             .gzip => gzip.compressFile(
-                args.allocator, args.io, args.cwd, args.src_dir,
-                file, args.output_dir, args.level,
+                args.allocator,
+                args.io,
+                args.cwd,
+                args.src_dir,
+                file,
+                args.output_dir,
+                args.level,
             ),
             .zstd => zstd.compressFile(
-                args.allocator, args.io, args.cwd, args.src_dir,
-                file, args.output_dir, args.level,
+                args.allocator,
+                args.io,
+                args.cwd,
+                args.src_dir,
+                file,
+                args.output_dir,
+                args.level,
             ),
             .brotli => brotli.compressFile(
-                args.allocator, args.io, args.cwd, args.src_dir,
-                file, args.output_dir, args.level,
+                args.allocator,
+                args.io,
+                args.cwd,
+                args.src_dir,
+                file,
+                args.output_dir,
+                args.level,
             ),
         };
 

@@ -7,19 +7,12 @@ const std = @import("std");
 
 /// Default file extensions to compress — common web assets that benefit from compression.
 pub const DEFAULT_EXTENSIONS = [_][]const u8{
-    ".js",   ".mjs", ".cjs",
-    ".css",
-    ".html", ".htm",
-    ".json",
-    ".svg",
-    ".png",
-    ".jpg",  ".jpeg",
-    ".gif",
-    ".ico",
-    ".ttf",
-    ".woff", ".woff2",
-    ".xml",
-    ".csv",
+    ".js",    ".mjs",  ".cjs",
+    ".css",   ".html", ".htm",
+    ".json",  ".svg",  ".png",
+    ".jpg",   ".jpeg", ".gif",
+    ".ico",   ".ttf",  ".woff",
+    ".woff2", ".xml",  ".csv",
     ".wasm",
 };
 
@@ -101,7 +94,7 @@ test "filterFiles with defaults" {
 test "filterFiles with exclusion" {
     const gpa = std.testing.allocator;
     const files = [_][]const u8{ "app.js", "big.js", "style.css" };
-    const exclude = [_][]const u8{ ".js" };
+    const exclude = [_][]const u8{".js"};
     const filtered = try filterFiles(gpa, &files, &.{}, &exclude);
     defer gpa.free(filtered);
 
