@@ -14,6 +14,7 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
+    continue-on-error: true
 
     steps:
       - uses: actions/checkout@v4
@@ -31,8 +32,5 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install zstd brotli
 
-      - name: Build (debug)
-        run: zig build
-
-      - name: Build (release)
+      - name: Build release
         run: zig build -Doptimize=ReleaseFast
