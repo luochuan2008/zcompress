@@ -1,0 +1,109 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  # Build binaries for all platforms
+  build:
+    name: Build (${{ matrix.target }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-latest
+            target: macos-arm64
+            zig-target: native
+          - os: macos-13
+            target: macos-x64
+            zig-target: native
+          - os: ubuntu-latest
+            target: linux-x64
+            zig-target: native
+          - os: windows-latest
+            target: windows-x64
+            zig-target: native
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Zig
+        uses: mlugg/setup-zig@v1
+        with:
+          version: 0.16.0-dev
+
+      - name: Install deps (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libzstd-dev libbrotli-dev
+
+      - name: Install deps (macOS)
+        if: runner.os == 'macOS'
+        run: brew install zstd brotli
+
+      - name: Install deps (Windows)
+        if: runner.os == 'Windows'
+        run: choco install zstandard brotli -y
+
+      - name: Build release
+        run: zig build -Doptimize=ReleaseFast
+
+      - name: Rename binary
+        shell: bash
+        run: |
+          BIN="zcompress-${{ matrix.target }}"
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            BIN="${BIN}.exe"
+            cp zig-out/bin/zcompress.exe "$BIN"
+          else
+            cp zig-out/bin/zcompress "$BIN"
+          fi
+          echo "BINARY=$BIN" >> $GITHUB_ENV
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.BINARY }}
+          path: ${{ env.BINARY }}
+
+  # Create GitHub Release + publish to npm
+  release:
+    name: Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: List artifacts
+        run: ls -la artifacts/
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: artifacts/*
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Publish to npm
+        run: |
+          cd plugins/vite
+          npm publish --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

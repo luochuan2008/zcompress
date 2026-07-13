@@ -1,0 +1,10 @@
+zig-out/
+zig-cache/
+.DS_Store
+*.o
+*.a
+*.so
+*.dylib
+node_modules/
+dist/
+dist-compressed/

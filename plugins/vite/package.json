@@ -1,0 +1,41 @@
+{
+  "name": "zcompress-vite-plugin",
+  "version": "0.1.0",
+  "description": "High-performance multi-threaded asset compression for Vite — powered by Zig",
+  "type": "module",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "files": [
+    "index.js",
+    "index.d.ts",
+    "install.js",
+    "README.md"
+  ],
+  "scripts": {
+    "postinstall": "node install.js",
+    "test": "node test.js"
+  },
+  "keywords": [
+    "vite",
+    "vite-plugin",
+    "compression",
+    "gzip",
+    "zstd",
+    "brotli",
+    "assets",
+    "zig",
+    "performance",
+    "multi-threaded"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/luochuan2008/zcompress"
+  },
+  "peerDependencies": {
+    "vite": "^4.0.0 || ^5.0.0 || ^6.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
