@@ -18,8 +18,6 @@ jobs:
             target: macos-x64
           - os: ubuntu-latest
             target: linux-x64
-          - os: windows-latest
-            target: windows-x64
     runs-on: ${{ matrix.os }}
 
     steps:
@@ -30,9 +28,6 @@ jobs:
         with:
           version: master
 
-      - name: Verify Zig
-        run: zig version
-
       - name: Install deps (Linux)
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libzstd-dev libbrotli-dev
@@ -41,10 +36,6 @@ jobs:
         if: runner.os == 'macOS'
         run: brew install zstd brotli
 
-      - name: Install deps (Windows)
-        if: runner.os == 'Windows'
-        run: choco install zstandard brotli -y
-
       - name: Build release
         run: zig build -Doptimize=ReleaseFast
 
@@ -52,12 +43,7 @@ jobs:
         shell: bash
         run: |
           BIN="zcompress-${{ matrix.target }}"
-          if [[ "${{ runner.os }}" == "Windows" ]]; then
-            BIN="${BIN}.exe"
-            cp zig-out/bin/zcompress.exe "$BIN"
-          else
-            cp zig-out/bin/zcompress "$BIN"
-          fi
+          cp zig-out/bin/zcompress "$BIN"
           echo "BINARY=$BIN" >> $GITHUB_ENV
 
       - name: Upload artifact
