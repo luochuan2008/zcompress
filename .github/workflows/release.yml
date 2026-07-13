@@ -6,7 +6,6 @@ on:
       - 'v*'
 
 jobs:
-  # Build binaries for all platforms
   build:
     name: Build (${{ matrix.target }})
     strategy:
@@ -15,25 +14,42 @@ jobs:
         include:
           - os: macos-latest
             target: macos-arm64
-            zig-target: native
+            zig-url: https://ziglang.org/builds/zig-macos-aarch64-0.16.0-dev.3153+d6f43caad.tar.xz
+            zig-dir: zig-macos-aarch64-0.16.0-dev.3153+d6f43caad
           - os: macos-13
             target: macos-x64
-            zig-target: native
+            zig-url: https://ziglang.org/builds/zig-macos-x86_64-0.16.0-dev.3153+d6f43caad.tar.xz
+            zig-dir: zig-macos-x86_64-0.16.0-dev.3153+d6f43caad
           - os: ubuntu-latest
             target: linux-x64
-            zig-target: native
+            zig-url: https://ziglang.org/builds/zig-linux-x86_64-0.16.0-dev.3153+d6f43caad.tar.xz
+            zig-dir: zig-linux-x86_64-0.16.0-dev.3153+d6f43caad
           - os: windows-latest
             target: windows-x64
-            zig-target: native
+            zig-url: https://ziglang.org/builds/zig-windows-x86_64-0.16.0-dev.3153+d6f43caad.zip
+            zig-dir: zig-windows-x86_64-0.16.0-dev.3153+d6f43caad
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Zig
-        uses: mlugg/setup-zig@v1
-        with:
-          version: master
+      - name: Install Zig
+        shell: bash
+        run: |
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            curl -L "${{ matrix.zig-url }}" -o zig.zip
+            7z x zig.zip -ozig-tmp
+            mv zig-tmp/* zig
+            echo "$PWD/zig" >> $GITHUB_PATH
+          else
+            curl -L "${{ matrix.zig-url }}" -o zig.tar.xz
+            tar xf zig.tar.xz
+            mv "${{ matrix.zig-dir }}" zig
+            echo "$PWD/zig" >> $GITHUB_PATH
+          fi
+
+      - name: Verify Zig
+        run: zig version
 
       - name: Install deps (Linux)
         if: runner.os == 'Linux'
@@ -68,7 +84,6 @@ jobs:
           name: ${{ env.BINARY }}
           path: ${{ env.BINARY }}
 
-  # Create GitHub Release + publish to npm
   release:
     name: Release
     needs: build

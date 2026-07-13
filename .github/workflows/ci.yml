@@ -12,16 +12,38 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: ubuntu-latest
+            zig-url: https://ziglang.org/builds/zig-linux-x86_64-0.16.0-dev.3153+d6f43caad.tar.xz
+            zig-dir: zig-linux-x86_64-0.16.0-dev.3153+d6f43caad
+          - os: macos-latest
+            zig-url: https://ziglang.org/builds/zig-macos-aarch64-0.16.0-dev.3153+d6f43caad.tar.xz
+            zig-dir: zig-macos-aarch64-0.16.0-dev.3153+d6f43caad
+          - os: windows-latest
+            zig-url: https://ziglang.org/builds/zig-windows-x86_64-0.16.0-dev.3153+d6f43caad.zip
+            zig-dir: zig-windows-x86_64-0.16.0-dev.3153+d6f43caad
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Zig
-        uses: mlugg/setup-zig@v1
-        with:
-          version: master
+      - name: Install Zig
+        shell: bash
+        run: |
+          if [[ "${{ runner.os }}" == "Windows" ]]; then
+            curl -L "${{ matrix.zig-url }}" -o zig.zip
+            7z x zig.zip -ozig-tmp
+            mv zig-tmp/* zig
+            echo "$PWD/zig" >> $GITHUB_PATH
+          else
+            curl -L "${{ matrix.zig-url }}" -o zig.tar.xz
+            tar xf zig.tar.xz
+            mv "${{ matrix.zig-dir }}" zig
+            echo "$PWD/zig" >> $GITHUB_PATH
+          fi
+
+      - name: Verify Zig
+        run: zig version
 
       - name: Install zstd + brotli (Linux)
         if: runner.os == 'Linux'
@@ -33,9 +55,7 @@ jobs:
 
       - name: Install zstd + brotli (Windows)
         if: runner.os == 'Windows'
-        run: |
-          choco install zstandard brotli -y
-          echo "LIB_DIR=C:/ProgramData/chocolatey/lib/zstandard/build/native/bin" >> $env:GITHUB_ENV
+        run: choco install zstandard brotli -y
 
       - name: Run tests
         run: zig build test --summary all
@@ -48,9 +68,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Setup Zig
-        uses: mlugg/setup-zig@v1
-        with:
-          version: master
+      - name: Install Zig
+        shell: bash
+        run: |
+          curl -L "https://ziglang.org/builds/zig-linux-x86_64-0.16.0-dev.3153+d6f43caad.tar.xz" -o zig.tar.xz
+          tar xf zig.tar.xz
+          mv zig-linux-x86_64-0.16.0-dev.3153+d6f43caad zig
+          echo "$PWD/zig" >> $GITHUB_PATH
       - name: Check formatting
         run: zig fmt --check src/ tests/ build.zig
