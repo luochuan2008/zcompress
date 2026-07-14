@@ -177,6 +177,23 @@ npm run build
 
 Default `failOnError: true` ensures builds fail loudly (instead of silently skipping compression).
 
+## Maintainer Release Checklist
+
+Before running `npm publish`:
+
+1. Build and upload these assets to GitHub Release `vX.Y.Z`:
+   - `zcompress-macos-arm64`
+   - `zcompress-macos-x64`
+   - `zcompress-linux-x64`
+   - `zcompress-windows-x64.exe`
+2. Run:
+
+```bash
+npm run verify:release-assets
+```
+
+`prepublishOnly` enforces this automatically, so broken releases are blocked.
+
 ## License
 
 MIT

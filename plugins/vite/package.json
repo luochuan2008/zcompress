@@ -13,7 +13,9 @@
   ],
   "scripts": {
     "postinstall": "node install.js",
-    "test": "node test.js"
+    "test": "node test.js",
+    "verify:release-assets": "node verify-release-assets.js",
+    "prepublishOnly": "npm run verify:release-assets"
   },
   "keywords": [
     "vite",
