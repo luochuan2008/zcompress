@@ -18,6 +18,8 @@ const REPO = 'luochuan2008/zcompress';
 const VERSION = pkg.version;
 const TAG = `v${VERSION}`;
 
+const warnOnly = process.argv.includes('--warn-only');
+
 const ASSETS = [
   'zcompress-macos-arm64',
   'zcompress-macos-x64',
@@ -34,6 +36,10 @@ function head(url) {
       },
     }, (res) => {
       resolve(res.statusCode || 0);
+    });
+
+    req.setTimeout(8000, () => {
+      req.destroy(new Error('timeout'));
     });
 
     req.on('error', () => resolve(0));
@@ -61,9 +67,18 @@ async function main() {
   }
 
   if (missing.length > 0) {
-    console.error('\n[verify-release-assets] Missing required release assets.');
-    console.error('[verify-release-assets] Upload binaries to GitHub Release first, then publish npm.');
-    for (const u of missing) console.error(`  - ${u}`);
+    const lines = [
+      '\n[verify-release-assets] Missing required release assets.',
+      '[verify-release-assets] Upload binaries to GitHub Release first for best UX.',
+      ...missing.map((u) => `  - ${u}`),
+    ];
+    for (const l of lines) console.error(l);
+
+    if (warnOnly) {
+      console.error('[verify-release-assets] WARN ONLY mode: continuing publish.');
+      process.exit(0);
+    }
+
     process.exit(1);
   }
 

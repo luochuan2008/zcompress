@@ -16,11 +16,17 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, statSync, readdirSync } from 'node:fs';
-import { join, dirname, isAbsolute } from 'node:path';
+import { existsSync, statSync, readdirSync, readFileSync, writeFileSync, mkdirSync } from 'node:fs';
+import { join, dirname, isAbsolute, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { gzipSync, brotliCompressSync, constants as zlibConstants } from 'node:zlib';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
+
+const DEFAULT_EXTENSIONS = [
+  '.js', '.mjs', '.cjs', '.css', '.html', '.htm', '.json', '.svg',
+  '.png', '.jpg', '.jpeg', '.gif', '.ico', '.ttf', '.woff', '.woff2', '.xml', '.csv', '.wasm',
+];
 
 /**
  * @typedef {Object} ZCompressOptions
@@ -147,6 +153,33 @@ export default function zcompressPlugin(userOptions = {}) {
 
         console.log(`[zcompress] ✅ Compressed ${formatSize(srcSize)} → ${formatSize(destSize)} (saved ${savedPct}%) in ${elapsed}s`);
       } catch (err) {
+        // Binary missing: fallback to built-in Node compression for gzip/brotli.
+        if (isBinaryNotFoundError(err)) {
+          try {
+            const fb = fallbackCompressAssets(outDir, compressedDir, options);
+            const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+            const savedPct = fb.srcSize > 0
+              ? ((1 - fb.destSize / fb.srcSize) * 100).toFixed(1)
+              : '0.0';
+
+            console.warn('[zcompress] ⚠ zcompress binary not found, using built-in Node fallback compressor.');
+            console.log(`[zcompress] ✅ Compressed ${formatSize(fb.srcSize)} → ${formatSize(fb.destSize)} (saved ${savedPct}%) in ${elapsed}s`);
+            if (fb.skipped > 0) console.log(`[zcompress] 💾 ${fb.skipped} file(s) skipped (cache)`);
+            return;
+          } catch (fallbackErr) {
+            const fallbackMessage = [
+              `[zcompress] ❌ Compression failed: ${err.message}`,
+              `[zcompress] Binary used: ${binary}`,
+              `[zcompress] Fallback also failed: ${fallbackErr.message}`,
+              '[zcompress] Workaround: install CLI manually (`zig build -Doptimize=ReleaseFast`) and set `binaryPath`.',
+            ].join('\n');
+
+            if (options.failOnError !== false) throw new Error(fallbackMessage);
+            console.error(fallbackMessage);
+            return;
+          }
+        }
+
         const message = [
           `[zcompress] ❌ Compression failed: ${err.message}`,
           `[zcompress] Binary used: ${binary}`,
@@ -162,6 +195,81 @@ export default function zcompressPlugin(userOptions = {}) {
       }
     },
   };
+}
+
+function isBinaryNotFoundError(err) {
+  return err && (err.code === 'ENOENT' || String(err.message || '').includes('ENOENT'));
+}
+
+function shouldCompressFile(filePath, options) {
+  const ext = extname(filePath).toLowerCase();
+  const include = options.include.length > 0
+    ? options.include.map((e) => e.toLowerCase())
+    : DEFAULT_EXTENSIONS;
+  const exclude = options.exclude.map((e) => e.toLowerCase());
+
+  if (!include.includes(ext)) return false;
+  if (exclude.includes(ext)) return false;
+  return true;
+}
+
+function compressionSuffix(algo) {
+  if (algo === 'gzip') return '.gz';
+  if (algo === 'brotli') return '.br';
+  throw new Error('Node fallback currently supports only gzip and brotli. Use CLI binary for zstd.');
+}
+
+function compressBuffer(buf, options) {
+  if (options.algo === 'gzip') {
+    const level = Math.max(1, Math.min(9, Number(options.level) || 6));
+    return gzipSync(buf, { level });
+  }
+  if (options.algo === 'brotli') {
+    const quality = Math.max(1, Math.min(11, Number(options.level) || 6));
+    return brotliCompressSync(buf, {
+      params: {
+        [zlibConstants.BROTLI_PARAM_QUALITY]: quality,
+      },
+    });
+  }
+  throw new Error('Node fallback currently supports only gzip and brotli.');
+}
+
+function fallbackCompressAssets(outDir, compressedDir, options) {
+  const allFiles = [];
+  walkDir(outDir, (file) => allFiles.push(file));
+
+  const suffix = compressionSuffix(options.algo);
+  let srcSize = 0;
+  let destSize = 0;
+  let skipped = 0;
+
+  for (const file of allFiles) {
+    if (!shouldCompressFile(file, options)) continue;
+
+    const rel = file.slice(outDir.length + 1);
+    const dest = join(compressedDir, `${rel}${suffix}`);
+
+    const srcStat = statSync(file);
+    if (options.cache && existsSync(dest)) {
+      const dstStat = statSync(dest);
+      if (dstStat.mtimeMs >= srcStat.mtimeMs) {
+        skipped++;
+        continue;
+      }
+    }
+
+    const data = readFileSync(file);
+    const compressed = compressBuffer(data, options);
+
+    mkdirSync(dirname(dest), { recursive: true });
+    writeFileSync(dest, compressed);
+
+    srcSize += srcStat.size;
+    destSize += compressed.length;
+  }
+
+  return { srcSize, destSize, skipped };
 }
 
 /**

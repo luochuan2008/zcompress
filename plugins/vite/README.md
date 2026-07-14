@@ -83,6 +83,8 @@ npm run build
 
 默认 `failOnError: true`，失败会直接中断构建（不会静默跳过压缩）。
 
+从 `v0.1.6` 开始：若找不到二进制，会自动启用 Node 内置 fallback（支持 `gzip` / `brotli`）。`zstd` 仍需 CLI 二进制。
+
 ## License
 
 MIT
@@ -176,6 +178,8 @@ npm run build
 ```
 
 Default `failOnError: true` ensures builds fail loudly (instead of silently skipping compression).
+
+Since `v0.1.6`: if the binary is missing, the plugin automatically falls back to Node built-in compression for `gzip` / `brotli`. `zstd` still requires the CLI binary.
 
 ## Maintainer Release Checklist
 
