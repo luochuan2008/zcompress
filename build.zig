@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
@@ -21,14 +22,8 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
-    // Link compression libraries (optional — error at runtime if not found)
-    inline for (.{ "zstd", "brotlienc" }) |lib| {
-        exe.root_module.linkSystemLibrary(lib, .{});
-    }
-    exe.root_module.addIncludePath(.{ .cwd_relative = "/opt/homebrew/include" });
-    exe.root_module.addLibraryPath(.{ .cwd_relative = "/opt/homebrew/lib" });
-    exe.root_module.addIncludePath(.{ .cwd_relative = "/usr/local/include" });
-    exe.root_module.addLibraryPath(.{ .cwd_relative = "/usr/local/lib" });
+    // Link compression libraries and add platform-specific paths
+    addCompressionDeps(exe.root_module, target.result.os.tag);
 
     b.installArtifact(exe);
 
@@ -42,19 +37,11 @@ pub fn build(b: *std.Build) void {
 
     // --- Tests ---
     const lib_tests = b.addTest(.{ .root_module = mod });
-    inline for (.{ "zstd", "brotlienc" }) |lib| {
-        lib_tests.root_module.linkSystemLibrary(lib, .{});
-    }
-    lib_tests.root_module.addIncludePath(.{ .cwd_relative = "/opt/homebrew/include" });
-    lib_tests.root_module.addLibraryPath(.{ .cwd_relative = "/opt/homebrew/lib" });
+    addCompressionDeps(lib_tests.root_module, target.result.os.tag);
     const run_lib_tests = b.addRunArtifact(lib_tests);
 
     const exe_tests = b.addTest(.{ .root_module = exe.root_module });
-    inline for (.{ "zstd", "brotlienc" }) |lib| {
-        exe_tests.root_module.linkSystemLibrary(lib, .{});
-    }
-    exe_tests.root_module.addIncludePath(.{ .cwd_relative = "/opt/homebrew/include" });
-    exe_tests.root_module.addLibraryPath(.{ .cwd_relative = "/opt/homebrew/lib" });
+    addCompressionDeps(exe_tests.root_module, target.result.os.tag);
     const run_exe_tests = b.addRunArtifact(exe_tests);
 
     const integration_tests = b.addTest(.{
@@ -73,4 +60,35 @@ pub fn build(b: *std.Build) void {
     test_step.dependOn(&run_lib_tests.step);
     test_step.dependOn(&run_exe_tests.step);
     test_step.dependOn(&run_integration_tests.step);
+}
+
+/// Add platform-specific compression library paths.
+fn addCompressionDeps(module: *std.Build.Module, os_tag: std.Target.Os.Tag) void {
+    // Link libraries (optional — runtime error if not found)
+    inline for (.{ "zstd", "brotlienc" }) |lib| {
+        module.linkSystemLibrary(lib, .{});
+    }
+
+    switch (os_tag) {
+        .macos, .ios, .tvos, .watchos, .visionos => {
+            module.addIncludePath(.{ .cwd_relative = "/opt/homebrew/include" });
+            module.addLibraryPath(.{ .cwd_relative = "/opt/homebrew/lib" });
+            module.addIncludePath(.{ .cwd_relative = "/usr/local/include" });
+            module.addLibraryPath(.{ .cwd_relative = "/usr/local/lib" });
+        },
+        .linux => {
+            module.addIncludePath(.{ .cwd_relative = "/usr/include" });
+            module.addLibraryPath(.{ .cwd_relative = "/usr/lib" });
+            module.addIncludePath(.{ .cwd_relative = "/usr/local/include" });
+            module.addLibraryPath(.{ .cwd_relative = "/usr/local/lib" });
+        },
+        .windows => {
+            // vcpkg / msys2 / chocolatey common paths
+            module.addIncludePath(.{ .cwd_relative = "C:/vcpkg/installed/x64-windows/include" });
+            module.addLibraryPath(.{ .cwd_relative = "C:/vcpkg/installed/x64-windows/lib" });
+            module.addIncludePath(.{ .cwd_relative = "C:/msys64/mingw64/include" });
+            module.addLibraryPath(.{ .cwd_relative = "C:/msys64/mingw64/lib" });
+        },
+        else => {},
+    }
 }

@@ -2,7 +2,7 @@
 
 Vite 生产构建资源压缩插件 — gzip / zstd / brotli，多线程并行，比 Node.js 方案快 5-10 倍。
 
-## 安装
+## 安装 · Install
 
 ```bash
 npm install zcompress-vite-plugin --save-dev
@@ -10,10 +10,11 @@ npm install zcompress-vite-plugin --save-dev
 
 安装后自动下载对应平台的 zcompress 二进制。如果下载失败，手动安装：
 
-```bash
-brew install zcompress          # macOS
-zig build install               # 从源码编译
-```
+| 平台 | 命令 |
+|------|------|
+| macOS | `brew install zstd brotli && zig build -Doptimize=ReleaseFast` |
+| Linux | `apt install libzstd-dev libbrotli-dev && zig build -Doptimize=ReleaseFast` |
+| Windows | 安装 [Zig](https://ziglang.org/download/)，`choco install zstandard brotli`，然后 `zig build -Doptimize=ReleaseFast` |
 
 ## 使用
 
