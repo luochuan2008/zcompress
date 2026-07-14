@@ -16,6 +16,8 @@ declare module 'zcompress-vite-plugin' {
     exclude?: string[];
     /** Override path to zcompress binary */
     binaryPath?: string;
+    /** Fail Vite build if compression fails (default: true) */
+    failOnError?: boolean;
   }
 
   import type { Plugin } from 'vite';

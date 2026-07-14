@@ -86,7 +86,14 @@ async function downloadBinary() {
     console.log(`[zcompress] ✓ Binary installed: ${destPath}`);
     return true;
   } catch (err) {
-    console.log(`[zcompress] ⚠ Could not download binary (${err.message}). Build from source: cd zcompress && zig build install`);
+    if (String(err.message).includes('HTTP 404')) {
+      console.log(`[zcompress] ⚠ Release asset not found for v${VERSION}: ${binaryName}`);
+      console.log(`[zcompress] ⚠ Expected URL: ${url}`);
+      console.log('[zcompress] ⚠ This usually means the npm version was published before uploading binary assets to GitHub Releases.');
+    } else {
+      console.log(`[zcompress] ⚠ Could not download binary (${err.message}).`);
+    }
+    console.log('[zcompress] ℹ Build from source: cd zcompress && zig build -Doptimize=ReleaseFast');
     // Clean up partial download
     try { unlinkSync(destPath); } catch (_) { /* ignore */ }
     return false;

@@ -15,7 +15,7 @@
  * };
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import { existsSync, statSync, readdirSync } from 'node:fs';
 import { join, dirname, isAbsolute } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -32,6 +32,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
  * @property {string[]} [include] - Extra file extensions to include
  * @property {string[]} [exclude] - File extensions to exclude
  * @property {string} [binaryPath] - Path to zcompress binary
+ * @property {boolean} [failOnError=true] - Fail Vite build if compression fails
  */
 
 /** @type {ZCompressOptions} */
@@ -43,6 +44,7 @@ const DEFAULT_OPTIONS = {
   cache: false,
   include: [],
   exclude: [],
+  failOnError: true,
 };
 
 /**
@@ -130,7 +132,7 @@ export default function zcompressPlugin(userOptions = {}) {
       const startTime = Date.now();
 
       try {
-        execSync(cmd, { stdio: 'inherit' });
+        execFileSync(binary, args, { stdio: 'inherit' });
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
         const srcSize = getDirSize(outDir);
@@ -141,8 +143,18 @@ export default function zcompressPlugin(userOptions = {}) {
 
         console.log(`[zcompress] ✅ Compressed ${formatSize(srcSize)} → ${formatSize(destSize)} (saved ${savedPct}%) in ${elapsed}s`);
       } catch (err) {
-        console.error(`[zcompress] ❌ Compression failed: ${err.message}`);
-        console.error('[zcompress] Make sure zcompress is installed: zig build install');
+        const message = [
+          `[zcompress] ❌ Compression failed: ${err.message}`,
+          `[zcompress] Binary used: ${binary}`,
+          '[zcompress] If this is a 404 download issue, GitHub Release may be missing prebuilt binaries for this version.',
+          '[zcompress] Workaround: install CLI manually (`zig build -Doptimize=ReleaseFast`) and set `binaryPath` in plugin options.',
+        ].join('\n');
+
+        if (options.failOnError !== false) {
+          throw new Error(message);
+        }
+
+        console.error(message);
       }
     },
   };
