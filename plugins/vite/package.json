@@ -1,6 +1,6 @@
 {
   "name": "zcompress-vite-plugin",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "description": "High-performance multi-threaded asset compression for Vite — powered by Zig",
   "type": "module",
   "main": "index.js",

@@ -74,6 +74,13 @@ zcompress({
 })
 ```
 
+也可用环境变量（不改代码）：
+
+```bash
+export ZCOMPRESS_BINARY=/absolute/path/to/zcompress
+npm run build
+```
+
 默认 `failOnError: true`，失败会直接中断构建（不会静默跳过压缩）。
 
 ## License
@@ -159,6 +166,13 @@ Workarounds:
 zcompress({
   binaryPath: '/absolute/path/to/zcompress',
 })
+```
+
+Or use env var (no code change):
+
+```bash
+export ZCOMPRESS_BINARY=/absolute/path/to/zcompress
+npm run build
 ```
 
 Default `failOnError: true` ensures builds fail loudly (instead of silently skipping compression).

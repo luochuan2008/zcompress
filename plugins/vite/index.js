@@ -49,14 +49,18 @@ const DEFAULT_OPTIONS = {
 
 /**
  * Find the zcompress binary.
- * Order: 1) downloaded by postinstall 2) local zig build 3) PATH
+ * Order: 1) ZCOMPRESS_BINARY env 2) downloaded by postinstall 3) local zig build 4) PATH
  */
 function findBinary() {
-  // 1) postinstall-downloaded binary inside package
+  // 1) explicit env override
+  const envBinary = process.env.ZCOMPRESS_BINARY;
+  if (envBinary) return envBinary;
+
+  // 2) postinstall-downloaded binary inside package
   const packagedBin = join(__dirname, 'bin', process.platform === 'win32' ? 'zcompress.exe' : 'zcompress');
   if (existsSync(packagedBin)) return packagedBin;
 
-  // 2) local zig build
+  // 3) local zig build
   const zigPaths = [
     join(process.cwd(), 'zig-out', 'bin', 'zcompress'),
     join(process.cwd(), 'zig-out', 'bin', 'zcompress.exe'),
@@ -65,7 +69,7 @@ function findBinary() {
     if (existsSync(p)) return p;
   }
 
-  // 3) PATH
+  // 4) PATH
   return 'zcompress';
 }
 
