@@ -5,8 +5,7 @@
  * Falls back gracefully if the binary can't be downloaded (e.g. air-gapped, unsupported platform).
  */
 
-import { execSync } from 'node:child_process';
-import { createWriteStream, existsSync, chmodSync, mkdirSync, unlinkSync } from 'node:fs';
+import { createWriteStream, existsSync, chmodSync, mkdirSync, unlinkSync, readFileSync } from 'node:fs';
 import { get } from 'node:https';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -14,8 +13,11 @@ import { pipeline } from 'node:stream/promises';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const BIN_DIR = join(__dirname, 'bin');
-const VERSION = '0.1.0'; // Update on each release
-const REPO = 'luochuan2008/zcompress'; // Change to your GitHub username/repo
+const REPO = 'luochuan2008/zcompress';
+
+// Read package version dynamically to avoid manual sync bugs.
+const pkgJson = JSON.parse(readFileSync(join(__dirname, 'package.json'), 'utf8'));
+const VERSION = pkgJson.version;
 
 const PLATFORM_MAP = {
   'darwin-arm64':  'zcompress-macos-arm64',

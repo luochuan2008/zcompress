@@ -2,7 +2,7 @@
  * zcompress Vite Plugin
  *
  * A Vite plugin that compresses build output using the zcompress CLI.
- * Provides multi-threaded gzip/zstd compression for production builds.
+ * Provides multi-threaded gzip/zstd/brotli compression for production builds.
  *
  * @example
  * // vite.config.js
@@ -16,8 +16,11 @@
  */
 
 import { execSync } from 'node:child_process';
-import { existsSync, statSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, statSync, readdirSync } from 'node:fs';
+import { join, dirname, isAbsolute } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
 
 /**
  * @typedef {Object} ZCompressOptions
@@ -44,15 +47,14 @@ const DEFAULT_OPTIONS = {
 
 /**
  * Find the zcompress binary.
- * Order: 1) downloaded by postinstall  2) PATH  3) local zig build
+ * Order: 1) downloaded by postinstall 2) local zig build 3) PATH
  */
 function findBinary() {
-  // 1. Check for postinstall-downloaded binary
-  const binDir = join(__dirname, 'bin');
-  const localBin = join(binDir, process.platform === 'win32' ? 'zcompress.exe' : 'zcompress');
-  if (existsSync(localBin)) return localBin;
+  // 1) postinstall-downloaded binary inside package
+  const packagedBin = join(__dirname, 'bin', process.platform === 'win32' ? 'zcompress.exe' : 'zcompress');
+  if (existsSync(packagedBin)) return packagedBin;
 
-  // 2. Check local zig build
+  // 2) local zig build
   const zigPaths = [
     join(process.cwd(), 'zig-out', 'bin', 'zcompress'),
     join(process.cwd(), 'zig-out', 'bin', 'zcompress.exe'),
@@ -61,7 +63,7 @@ function findBinary() {
     if (existsSync(p)) return p;
   }
 
-  // 3. Fall back to PATH
+  // 3) PATH
   return 'zcompress';
 }
 
@@ -74,20 +76,29 @@ function findBinary() {
 export default function zcompressPlugin(userOptions = {}) {
   const options = { ...DEFAULT_OPTIONS, ...userOptions };
 
+  // ESM-safe plugin state (do not use `this`)
+  let active = false;
+  let resolvedOutDir = 'dist';
+
   return {
     name: 'zcompress',
     apply: 'build',
     enforce: 'post',
 
     configResolved(config) {
-      // Only run in production build mode
-      this.active = config.command === 'build';
+      active = config.command === 'build';
+
+      // Save outDir from Vite config (Bug #2 fix)
+      const configuredOutDir = config.build?.outDir || 'dist';
+      resolvedOutDir = isAbsolute(configuredOutDir)
+        ? configuredOutDir
+        : join(config.root || process.cwd(), configuredOutDir);
     },
 
     closeBundle() {
-      if (!this.active) return;
+      if (!active) return;
 
-      const outDir = this.outDir || 'dist';
+      const outDir = resolvedOutDir;
       const compressedDir = `${outDir}-compressed`;
 
       if (!existsSync(outDir)) {
@@ -103,18 +114,12 @@ export default function zcompressPlugin(userOptions = {}) {
         '-l', String(options.level),
       ];
 
-      if (options.threads > 0) {
-        args.push('-t', String(options.threads));
-      }
+      if (options.threads > 0) args.push('-t', String(options.threads));
       if (options.verbose) args.push('--verbose');
       if (options.cache) args.push('--cache');
 
-      for (const ext of options.include) {
-        args.push(`--include=${ext}`);
-      }
-      for (const ext of options.exclude) {
-        args.push(`--exclude=${ext}`);
-      }
+      for (const ext of options.include) args.push(`--include=${ext}`);
+      for (const ext of options.exclude) args.push(`--exclude=${ext}`);
 
       const cmd = `${binary} ${args.join(' ')}`;
 
@@ -128,7 +133,6 @@ export default function zcompressPlugin(userOptions = {}) {
         execSync(cmd, { stdio: 'inherit' });
         const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
 
-        // Calculate size stats
         const srcSize = getDirSize(outDir);
         const destSize = getDirSize(compressedDir);
         const savedPct = srcSize > 0
@@ -152,17 +156,19 @@ export default function zcompressPlugin(userOptions = {}) {
  */
 function getDirSize(dirPath) {
   if (!existsSync(dirPath)) return 0;
-  // Simple approximation — list files and sum their sizes
+
   let total = 0;
   try {
-    const { readdirSync } = require('node:fs');
-    const { join } = require('node:path');
     walkDir(dirPath, (filePath) => {
       try {
         total += statSync(filePath).size;
-      } catch (_) { /* ignore */ }
+      } catch {
+        // ignore unreadable files
+      }
     });
-  } catch (_) { /* ignore */ }
+  } catch {
+    // ignore traversal failures
+  }
   return total;
 }
 
@@ -173,8 +179,6 @@ function getDirSize(dirPath) {
  * @param {(path: string) => void} fn
  */
 function walkDir(dir, fn) {
-  const { readdirSync } = require('node:fs');
-  const { join } = require('node:path');
   try {
     const entries = readdirSync(dir, { withFileTypes: true });
     for (const entry of entries) {
@@ -185,7 +189,9 @@ function walkDir(dir, fn) {
         fn(full);
       }
     }
-  } catch (_) { /* ignore */ }
+  } catch {
+    // ignore traversal failures
+  }
 }
 
 /**
