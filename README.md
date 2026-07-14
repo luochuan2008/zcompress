@@ -1,32 +1,24 @@
-# 🚀 zcompress
+# 🚀 zcompress · 极速资源压缩器
 
-High-performance multi-threaded asset compressor written in **Zig**. 5-10x faster than Node.js compression solutions.
+高性能多线程资源压缩工具，Zig 编写，5-10x 快于 Node.js 方案。
 
-## Features
+*A high-performance multi-threaded asset compressor written in Zig. 5-10x faster than Node.js.*
 
-- 🧵 **Multi-threaded** — uses all CPU cores for parallel compression
-- ⚡ **Native performance** — written in Zig, 5-10x faster than Node.js
-- 📦 **Three algorithms** — gzip, zstd, brotli
-- 📁 **Smart file filtering** — auto-detects compressible web assets
-- 💾 **Incremental cache** — skip unchanged files on re-runs
-- 🔌 **Vite plugin** — drop-in for Vite projects
+---
 
-## Quick Start
+## 快速开始 · Quick Start
 
 ### CLI
 
 ```bash
-# Build
 zig build -Doptimize=ReleaseFast
-
-# Compress a directory
 zig-out/bin/zcompress -i ./dist -o ./dist-compressed
 
-# With options
+# 指定算法和线程
 zig-out/bin/zcompress -i ./dist -o ./dist-gz -a zstd -l 9 -t 8 -v --cache
 ```
 
-### Vite Plugin
+### Vite 插件 · Vite Plugin
 
 ```bash
 npm install zcompress-vite-plugin --save-dev
@@ -35,77 +27,58 @@ npm install zcompress-vite-plugin --save-dev
 ```js
 // vite.config.js
 import zcompress from 'zcompress-vite-plugin';
-
-export default {
-  plugins: [
-    zcompress({ algo: 'brotli', level: 11, threads: 4 })
-  ]
-};
+export default { plugins: [zcompress({ algo: 'brotli' })] };
 ```
 
-## CLI Options
+---
 
-| Flag | Long | Description | Default |
+## 功能 · Features
+
+| | |
+|---|---|
+| 🧵 多线程 | 占用全部 CPU 核心，非单线程 |
+| ⚡ 原生性能 | Zig 编写，无运行时开销，比 Node.js 方案快 5-10x |
+| 📦 三种算法 | gzip · zstd · brotli |
+| 📁 智能过滤 | 自动识别可压缩的 Web 资源类型 |
+| 💾 增量缓存 | 重复运行时跳过未修改文件 |
+| 🔌 Vite 插件 | 开箱即用 |
+
+---
+
+## CLI 选项 · Options
+
+| 短 | 长 | 说明 · Desc | 默认 |
 |---|---|---|---|
-| `-i` | `--input` | Input directory | `./dist` |
-| `-o` | `--output` | Output directory | `./dist-compressed` |
-| `-a` | `--algo` | Algorithm: `gzip` | `gzip` |
-| `-l` | `--level` | Compression level: 1-9 | `6` |
-| `-t` | `--threads` | Thread count (0=auto) | CPU count |
-| `-c` | `--cache` | Enable incremental cache | disabled |
-| `-v` | `--verbose` | Verbose output | disabled |
-| `-h` | `--help` | Show help | — |
+| `-i` | `--input` | 输入目录 | `./dist` |
+| `-o` | `--output` | 输出目录 | `./dist-compressed` |
+| `-a` | `--algo` | 算法: `gzip` `zstd` `brotli` | `gzip` |
+| `-l` | `--level` | 压缩级别 1-9 | `6` |
+| `-t` | `--threads` | 线程数 (0=自动) | CPU 核心数 |
+| `-c` | `--cache` | 增量缓存 | 关闭 |
+| `-v` | `--verbose` | 详细输出 | 关闭 |
+| `-h` | `--help` | 帮助 | — |
 
-## Project Structure
+## 项目结构 · Structure
 
 ```
-zcompress/
-├── src/
-│   ├── main.zig              # CLI entry point
-│   ├── root.zig              # Public library API
-│   ├── cli/
-│   │   ├── mod.zig           # Argument parsing
-│   │   └── progress.zig      # Progress bar
-│   ├── compress/
-│   │   ├── mod.zig           # Compression module
-│   │   ├── gzip.zig          # Gzip compression
-│   │   ├── zstd.zig          # Zstd stub (coming soon)
-│   │   └── pipeline.zig      # Multi-threaded pipeline
-│   ├── fs/
-│   │   ├── mod.zig           # Filesystem module
-│   │   ├── walker.zig        # Recursive directory walker
-│   │   └── matcher.zig       # File extension matcher
-│   └── cache/
-│       ├── mod.zig           # Cache module
-│       └── hash.zig          # File hash (MD5)
-├── tests/
-│   └── integration_test.zig  # End-to-end tests
-├── plugins/vite/             # Vite plugin (JS)
-├── build.zig                 # Build configuration
-└── build.zig.zon             # Package manifest
+src/
+├── main.zig              CLI 入口
+├── root.zig              公共库
+├── cli/                  参数解析 + 进度条
+├── compress/             gzip · zstd · brotli · pipeline
+├── fs/                   目录遍历 + 扩展名过滤
+└── cache/                文件哈希
+plugins/vite/             Vite 插件
+tests/                    测试
 ```
 
-## Vite Plugin
-
-```js
-// vite.config.js
-import zcompress from 'zcompress-vite-plugin';
-
-export default {
-  plugins: [
-    zcompress({ algo: 'gzip', level: 6, threads: 4, verbose: true })
-  ]
-};
-```
-
-## Development
+## 开发 · Development
 
 ```bash
-# Run tests
-zig build test
-
-# Build with optimizations
-zig build -Doptimize=ReleaseFast
+zig build test              # 运行测试
+zig build -Doptimize=ReleaseFast  # 发布构建
+node plugins/vite/test.js   # Vite 插件 E2E 测试
+./scripts/release.sh 0.1.0  # 发布新版本
 ```
 
 ## License
